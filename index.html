@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desafío Ritmo & Mover - Coreografía Dinámica Recreativa</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Poppins y Luckiest Guy -->
+    <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Poppins', 'sans-serif'],
+                        display: ['Luckiest Guy', 'cursive'],
+                    },
+                    colors: {
+                        brand: {
+                            purple: '#7C3AED',
+                            pink: '#EC4899',
+                            yellow: '#F59E0B',
+                            cyan: '#06B6D4',
+                            emerald: '#10B981',
+                            dark: '#0F172A'
+                        }
+                    },
+                    animation: {
+                        'bounce-short': 'bounceShort 0.4s ease-in-out',
+                        'pulse-glow': 'pulseGlow 2s infinite',
+                        'shake': 'shake 0.5s ease-in-out',
+                    },
+                    keyframes: {
+                        bounceShort: {
+                            '0%, 100%': { transform: 'scale(1)' },
+                            '50%': { transform: 'scale(1.08)' }
+                        },
+                        pulseGlow: {
+                            '0%, 100%': { filter: 'drop-shadow(0 0 15px rgba(236, 72, 153, 0.6))' },
+                            '50%': { filter: 'drop-shadow(0 0 25px rgba(124, 58, 237, 0.8))' }
+                        },
+                        shake: {
+                            '0%, 100%': { transform: 'translateX(0)' },
+                            '20%, 60%': { transform: 'translateX(-8px)' },
+                            '40%, 80%': { transform: 'translateX(8px)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%);
+            min-height: 100vh;
+            user-select: none;
+        }
+
+        .card-glow {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card-glow:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 30px -10px rgba(236, 72, 153, 0.3);
+        }
+
+        .selected-concept {
+            border-color: #F59E0B !important;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(236, 72, 153, 0.25)) !important;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.6) !important;
+            transform: scale(1.03);
+        }
+
+        .selected-definition {
+            border-color: #06B6D4 !important;
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.25), rgba(124, 58, 237, 0.25)) !important;
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.6) !important;
+            transform: scale(1.03);
+        }
+
+        .matched-pair {
+            opacity: 0.35;
+            pointer-events: none;
+            filter: grayscale(0.5);
+            transform: scale(0.97);
+            border-color: #10B981 !important;
+            background: rgba(16, 185, 129, 0.15) !important;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        /* Confetti canvas overlay */
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body class="text-white font-sans antialiased flex flex-col justify-between min-h-screen p-4 md:p-8">
+
+    <!-- Canvas para Confeti -->
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- Header Principal -->
+    <header class="max-w-5xl mx-auto w-full text-center mb-6">
+        <div class="inline-block mb-2">
+            <span class="bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 text-transparent bg-clip-text font-display text-3xl md:text-5xl uppercase tracking-wider animate-pulse-glow">
+                <i class="fa-solid font-sans text-pink-500 fa-compact-disc mr-2"></i>Coreografía Dinámica
+            </span>
+        </div>
+        <p class="text-slate-300 text-sm md:text-base max-w-xl mx-auto font-medium">
+            ¡Conecta el ritmo! Empareja cada <span class="text-amber-400 font-bold">Concepto</span> con su <span class="text-cyan-400 font-bold">Definición Recreativa</span> correspondiente.
+        </p>
+
+        <!-- Barra de Estadísticas -->
+        <div class="grid grid-cols-3 gap-3 md:gap-6 max-w-3xl mx-auto mt-6">
+            <div class="glass-panel p-3 md:p-4 rounded-2xl flex items-center justify-center space-x-3 border-l-4 border-amber-400">
+                <i class="fa-solid fa-stopwatch text-amber-400 text-xl md:text-2xl"></i>
+                <div class="text-left">
+                    <p class="text-xs text-slate-400 font-semibold uppercase">Tiempo</p>
+                    <p id="timer" class="text-lg md:text-2xl font-bold font-mono">00:00</p>
+                </div>
+            </div>
+
+            <div class="glass-panel p-3 md:p-4 rounded-2xl flex items-center justify-center space-x-3 border-l-4 border-pink-500">
+                <i class="fa-solid fa-bullseye text-pink-500 text-xl md:text-2xl"></i>
+                <div class="text-left">
+                    <p class="text-xs text-slate-400 font-semibold uppercase">Intentos</p>
+                    <p id="attempts" class="text-lg md:text-2xl font-bold font-mono">0</p>
+                </div>
+            </div>
+
+            <div class="glass-panel p-3 md:p-4 rounded-2xl flex items-center justify-center space-x-3 border-l-4 border-emerald-400">
+                <i class="fa-solid fa-check-double text-emerald-400 text-xl md:text-2xl"></i>
+                <div class="text-left">
+                    <p class="text-xs text-slate-400 font-semibold uppercase">Aciertos</p>
+                    <p id="matches-count" class="text-lg md:text-2xl font-bold font-mono">0 / 8</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Barra de Progreso -->
+        <div class="w-full bg-slate-800/80 rounded-full h-3 mt-4 max-w-3xl mx-auto overflow-hidden p-0.5 border border-slate-700">
+            <div id="progress-bar" class="bg-gradient-to-r from-amber-400 via-pink-500 to-emerald-400 h-full rounded-full transition-all duration-500 w-0"></div>
+        </div>
+    </header>
+
+    <!-- Area Principal del Juego -->
+    <main class="max-w-6xl mx-auto w-full flex-grow grid grid-cols-1 md:grid-cols-2 gap-6 items-start my-2">
+        
+        <!-- Columna de Conceptos -->
+        <div class="space-y-3">
+            <h2 class="text-lg font-bold text-amber-400 flex items-center mb-3 tracking-wide uppercase">
+                <i class="fa-solid fa-icons mr-2"></i> 1. Elige un Concepto
+            </h2>
+            <div id="concepts-container" class="space-y-3">
+                <!-- Se generará dinámicamente -->
+            </div>
+        </div>
+
+        <!-- Columna de Definiciones -->
+        <div class="space-y-3">
+            <h2 class="text-lg font-bold text-cyan-400 flex items-center mb-3 tracking-wide uppercase">
+                <i class="fa-solid fa-book-open mr-2"></i> 2. Elige su Definición
+            </h2>
+            <div id="definitions-container" class="space-y-3">
+                <!-- Se generará dinámicamente -->
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Botón Reiniciar / Reiniciar Abajo -->
+    <footer class="max-w-5xl mx-auto w-full text-center mt-6">
+        <button id="btn-reset" onclick="initGame()" class="glass-panel hover:bg-white/20 text-white font-bold py-3 px-8 rounded-full shadow-lg transition duration-300 transform hover:scale-105 active:scale-95 border border-white/20 inline-flex items-center space-x-2">
+            <i class="fa-solid fa-rotate-right"></i>
+            <span>Reiniciar Juego</span>
+        </button>
+    </footer>
+
+    <!-- Modal de Felicitaciones al Completar -->
+    <div id="victory-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 hidden transition-all duration-500">
+        <div class="glass-panel border-2 border-pink-500/50 rounded-3xl p-6 md:p-10 max-w-lg w-full text-center shadow-2xl relative overflow-hidden transform scale-90 transition-transform duration-300" id="modal-card">
+            
+            <div class="absolute -top-10 -right-10 w-32 h-32 bg-pink-500/20 rounded-full blur-xl pointer-events-none"></div>
+            <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-purple-500/20 rounded-full blur-xl pointer-events-none"></div>
+
+            <div class="w-24 h-24 bg-gradient-to-tr from-amber-400 to-pink-500 rounded-full mx-auto flex items-center justify-center mb-4 shadow-lg animate-bounce-short">
+                <i class="fa-solid fa-trophy text-4xl text-slate-900"></i>
+            </div>
+
+            <h2 class="font-display text-3xl md:text-4xl text-amber-300 mb-2 tracking-wide uppercase">
+                ¡Gran Coreografía!
+            </h2>
+            <p class="text-slate-200 text-sm md:text-base mb-6 font-medium">
+                Has demostrado un excelente dominio del ritmo y la estructura dinámica recreativa.
+            </p>
+
+            <!-- Valoración con estrellas -->
+            <div id="star-rating" class="flex justify-center space-x-2 text-2xl text-amber-400 mb-6">
+                <i class="fa-solid fa-star"></i>
+                <i class="fa-solid fa-star"></i>
+                <i class="fa-solid fa-star"></i>
+            </div>
+
+            <!-- Resumen de resultados -->
+            <div class="bg-slate-900/60 rounded-2xl p-4 mb-6 grid grid-cols-2 gap-4 border border-slate-700/50">
+                <div class="text-center">
+                    <p class="text-xs text-slate-400 font-semibold uppercase">Tiempo Total</p>
+                    <p id="final-time" class="text-xl font-bold font-mono text-cyan-400">00:00</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-xs text-slate-400 font-semibold uppercase">Total Intentos</p>
+                    <p id="final-attempts" class="text-xl font-bold font-mono text-pink-400">0</p>
+                </div>
+            </div>
+
+            <button onclick="initGame()" class="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-2xl shadow-xl transition-all duration-300 transform hover:scale-102 active:scale-98 flex items-center justify-center space-x-2 text-lg">
+                <i class="fa-solid fa-play"></i>
+                <span>¡Jugar de Nuevo!</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Lógica de JS integrados -->
+    <script>
+        // Datos del Cuestionario: Conceptos y Definiciones
+        const gameData = [
+            {
+                id: "calentamiento",
+                concept: "Calentamiento",
+                icon: "fa-fire-flame-curved",
+                color: "from-orange-500 to-amber-500",
+                definition: "Fase inicial obligatoria con movimientos de baja intensidad para preparar músculos, articulaciones y prevenir lesiones."
+            },
+            {
+                id: "cuenta-8",
+                concept: "Cuenta de 8",
+                icon: "fa-drum",
+                color: "from-pink-500 to-rose-500",
+                definition: "Estructura rítmica musical estándar que sirve para contabilizar, organizar y sincronizar los pasos coreográficos."
+            },
+            {
+                id: "bloque-coreografico",
+                concept: "Bloque Coreográfico",
+                icon: "fa-layer-group",
+                color: "from-purple-500 to-indigo-500",
+                definition: "Conjunto de secuencias o frases musicales (normalmente 32 tiempos o 4 octavas) agrupadas con coherencia."
+            },
+            {
+                id: "canon",
+                concept: "Canon",
+                icon: "fa-people-arrows",
+                color: "from-cyan-500 to-blue-500",
+                definition: "Recurso donde un grupo ejecuta la misma secuencia de movimiento pero iniciando en tiempos distintos de la música."
+            },
+            {
+                id: "transicion",
+                concept: "Transición",
+                icon: "fa-shuffle",
+                color: "from-emerald-500 to-teal-500",
+                definition: "Pasaje o movimiento fluido que conecta una figura, paso o bloque con el siguiente sin romper la continuidad."
+            },
+            {
+                id: "expresion-corporal",
+                concept: "Expresión Corporal",
+                icon: "fa-masks-theater",
+                color: "from-yellow-400 to-amber-600",
+                definition: "Uso del gesto, la mirada y la energía del cuerpo para transmitir emoción, diversión y entusiasmo al público o grupo."
+            },
+            {
+                id: "remate-cierre",
+                concept: "Remate / Cierre",
+                icon: "fa-flag-checkered",
+                color: "from-red-500 to-pink-600",
+                definition: "Movimiento final o pose acentuada que marca claramente la conclusión de la rutina o de un bloque principal."
+            },
+            {
+                id: "estilo-recreativo",
+                concept: "Estilo Recreativo",
+                icon: "fa-face-smile-beam",
+                color: "from-violet-500 to-fuchsia-500",
+                definition: "Enfoque centrado en la inclusión, el disfrute, la salud y la participación colectiva por encima de la perfección técnica."
+            }
+        ];
+
+        // Estado del Juego
+        let selectedConcept = null;
+        let selectedDefinition = null;
+        let matchesCount = 0;
+        let attemptsCount = 0;
+        let timerInterval = null;
+        let secondsElapsed = 0;
+        let gameStarted = false;
+
+        // Elementos DOM
+        const conceptsContainer = document.getElementById('concepts-container');
+        const definitionsContainer = document.getElementById('definitions-container');
+        const matchesCountEl = document.getElementById('matches-count');
+        const attemptsEl = document.getElementById('attempts');
+        const timerEl = document.getElementById('timer');
+        const progressBar = document.getElementById('progress-bar');
+        const victoryModal = document.getElementById('victory-modal');
+        const modalCard = document.getElementById('modal-card');
+
+        // Algoritmo de Mezcla (Fisher-Yates)
+        function shuffle(array) {
+            let currentIndex = array.length, randomIndex;
+            const newArr = [...array];
+            while (currentIndex !== 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [newArr[currentIndex], newArr[randomIndex]] = [newArr[randomIndex], newArr[currentIndex]];
+            }
+            return newArr;
+        }
+
+        // Inicializar o Reiniciar Juego
+        function initGame() {
+            // Reset Estado
+            selectedConcept = null;
+            selectedDefinition = null;
+            matchesCount = 0;
+            attemptsCount = 0;
+            secondsElapsed = 0;
+            gameStarted = false;
+            clearInterval(timerInterval);
+
+            // Actualizar UI
+            timerEl.textContent = "00:00";
+            attemptsEl.textContent = "0";
+            matchesCountEl.textContent = `0 / ${gameData.length}`;
+            progressBar.style.width = "0%";
+            victoryModal.classList.add('hidden');
+            modalCard.classList.add('scale-90');
+            modalCard.classList.remove('scale-100');
+
+            // Limpiar contenedores
+            conceptsContainer.innerHTML = '';
+            definitionsContainer.innerHTML = '';
+
+            // Generar listas aleatorias
+            const shuffledConcepts = shuffle(gameData);
+            const shuffledDefinitions = shuffle(gameData);
+
+            // Renderizar Conceptos
+            shuffledConcepts.forEach(item => {
+                const card = document.createElement('div');
+                card.className = `glass-panel card-glow rounded-2xl p-4 cursor-pointer flex items-center space-x-4 border border-white/10 transition-all duration-300 select-none`;
+                card.dataset.id = item.id;
+                card.dataset.type = 'concept';
+
+                card.innerHTML = `
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-tr ${item.color} flex items-center justify-center text-white text-xl shadow-md shrink-0">
+                        <i class="fa-solid ${item.icon}"></i>
+                    </div>
+                    <span class="font-bold text-slate-100 text-base md:text-lg">${item.concept}</span>
+                `;
+
+                card.addEventListener('click', () => handleSelectConcept(card, item.id));
+                conceptsContainer.appendChild(card);
+            });
+
+            // Renderizar Definiciones
+            shuffledDefinitions.forEach(item => {
+                const card = document.createElement('div');
+                card.className = `glass-panel card-glow rounded-2xl p-4 cursor-pointer flex items-start space-x-3 border border-white/10 transition-all duration-300 select-none`;
+                card.dataset.id = item.id;
+                card.dataset.type = 'definition';
+
+                card.innerHTML = `
+                    <div class="mt-1 text-cyan-400 shrink-0">
+                        <i class="fa-regular fa-circle-dot text-lg"></i>
+                    </div>
+                    <p class="text-slate-200 text-xs md:text-sm leading-relaxed">${item.definition}</p>
+                `;
+
+                card.addEventListener('click', () => handleSelectDefinition(card, item.id));
+                definitionsContainer.appendChild(card);
+            });
+        }
+
+        // Control del Temporizador
+        function startTimer() {
+            if (!gameStarted) {
+                gameStarted = true;
+                timerInterval = setInterval(() => {
+                    secondsElapsed++;
+                    const mins = Math.floor(secondsElapsed / 60).toString().padStart(2, '0');
+                    const secs = (secondsElapsed % 60).toString().padStart(2, '0');
+                    timerEl.textContent = `${mins}:${secs}`;
+                }, 1000);
+            }
+        }
+
+        // Manejar Selección de Concepto
+        function handleSelectConcept(card, id) {
+            startTimer();
+
+            if (card.classList.contains('matched-pair')) return;
+
+            // Deseleccionar anterior si existe
+            if (selectedConcept) {
+                selectedConcept.element.classList.remove('selected-concept');
+            }
+
+            // Si se hace clic en el mismo, se deselecciona
+            if (selectedConcept && selectedConcept.id === id && selectedConcept.element === card) {
+                selectedConcept = null;
+                return;
+            }
+
+            selectedConcept = { element: card, id: id };
+            card.classList.add('selected-concept');
+
+            checkMatch();
+        }
+
+        // Manejar Selección de Definición
+        function handleSelectDefinition(card, id) {
+            startTimer();
+
+            if (card.classList.contains('matched-pair')) return;
+
+            // Deseleccionar anterior si existe
+            if (selectedDefinition) {
+                selectedDefinition.element.classList.remove('selected-definition');
+            }
+
+            // Si se hace clic en la misma, se deselecciona
+            if (selectedDefinition && selectedDefinition.id === id && selectedDefinition.element === card) {
+                selectedDefinition = null;
+                return;
+            }
+
+            selectedDefinition = { element: card, id: id };
+            card.classList.add('selected-definition');
+
+            checkMatch();
+        }
+
+        // Verificar Emparejamiento
+        function checkMatch() {
+            if (selectedConcept && selectedDefinition) {
+                attemptsCount++;
+                attemptsEl.textContent = attemptsCount;
+
+                if (selectedConcept.id === selectedDefinition.id) {
+                    // ¡Acierto!
+                    const conceptEl = selectedConcept.element;
+                    const defEl = selectedDefinition.element;
+
+                    conceptEl.classList.remove('selected-concept');
+                    defEl.classList.remove('selected-definition');
+
+                    conceptEl.classList.add('matched-pair');
+                    defEl.classList.add('matched-pair');
+
+                    // Cambiar icono del check en la definición
+                    const iconEl = defEl.querySelector('i');
+                    if (iconEl) {
+                        iconEl.className = 'fa-solid fa-circle-check text-emerald-400 text-lg';
+                    }
+
+                    matchesCount++;
+                    matchesCountEl.textContent = `${matchesCount} / ${gameData.length}`;
+
+                    // Actualizar Barra de Progreso
+                    const progressPercent = (matchesCount / gameData.length) * 100;
+                    progressBar.style.width = `${progressPercent}%`;
+
+                    selectedConcept = null;
+                    selectedDefinition = null;
+
+                    // Comprobar Victoria
+                    if (matchesCount === gameData.length) {
+                        endGame();
+                    }
+
+                } else {
+                    // Error: Animación de fallo temporal
+                    const cEl = selectedConcept.element;
+                    const dEl = selectedDefinition.element;
+
+                    cEl.classList.add('animate-shake', 'border-red-500');
+                    dEl.classList.add('animate-shake', 'border-red-500');
+
+                    setTimeout(() => {
+                        cEl.classList.remove('animate-shake', 'border-red-500', 'selected-concept');
+                        dEl.classList.remove('animate-shake', 'border-red-500', 'selected-definition');
+                    }, 500);
+
+                    selectedConcept = null;
+                    selectedDefinition = null;
+                }
+            }
+        }
+
+        // Finalizar Juego
+        function endGame() {
+            clearInterval(timerInterval);
+
+            // Calcular Estrellas según intentos
+            const starContainer = document.getElementById('star-rating');
+            let starsHTML = '';
+            if (attemptsCount <= gameData.length + 2) {
+                starsHTML = '<i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>';
+            } else if (attemptsCount <= gameData.length + 6) {
+                starsHTML = '<i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-regular fa-star"></i>';
+            } else {
+                starsHTML = '<i class="fa-solid fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i>';
+            }
+            starContainer.innerHTML = starsHTML;
+
+            // Mostrar métricas en modal
+            document.getElementById('final-time').textContent = timerEl.textContent;
+            document.getElementById('final-attempts').textContent = attemptsCount;
+
+            // Mostrar Modal con Efecto
+            setTimeout(() => {
+                victoryModal.classList.remove('hidden');
+                setTimeout(() => {
+                    modalCard.classList.remove('scale-90');
+                    modalCard.classList.add('scale-100');
+                }, 50);
+                launchConfetti();
+            }, 400);
+        }
+
+        // SISTEMA DE CONFETI EN CANVAS
+        function launchConfetti() {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const particles = [];
+            const particleCount = 120;
+            const colors = ['#EC4899', '#7C3AED', '#F59E0B', '#06B6D4', '#10B981'];
+
+            for (let i = 0; i < particleCount; i++) {
+                particles.push({
+                    x: canvas.width / 2,
+                    y: canvas.height / 2,
+                    vx: (Math.random() - 0.5) * 18,
+                    vy: (Math.random() - 0.5) * 18 - 4,
+                    size: Math.random() * 8 + 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    rotation: Math.random() * 360,
+                    rotationSpeed: (Math.random() - 0.5) * 10,
+                    gravity: 0.2,
+                    opacity: 1
+                });
+            }
+
+            let animationFrame;
+            function render() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let alive = false;
+
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += p.gravity;
+                    p.rotation += p.rotationSpeed;
+                    p.opacity -= 0.008;
+
+                    if (p.opacity > 0) {
+                        alive = true;
+                        ctx.save();
+                        ctx.translate(p.x, p.y);
+                        ctx.rotate((p.rotation * Math.PI) / 180);
+                        ctx.globalAlpha = Math.max(0, p.opacity);
+                        ctx.fillStyle = p.color;
+                        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                        ctx.restore();
+                    }
+                });
+
+                if (alive) {
+                    animationFrame = requestAnimationFrame(render);
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    cancelAnimationFrame(animationFrame);
+                }
+            }
+
+            render();
+        }
+
+        // Redimensionar Canvas al ajustar pantalla
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('confetti-canvas');
+            if (canvas) {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+        });
+
+        // Iniciar al cargar
+        window.onload = function() {
+            initGame();
+        };
+    </script>
+</body>
+</html>
